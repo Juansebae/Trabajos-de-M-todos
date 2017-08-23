@@ -1,0 +1,34 @@
+b). Para dar respuesta a la pregunta se analizará la ecuación diferencial asociada al incremento de la población infectada, ya que
+    esta ecuación contiene la información relacionada a la propagación de la epidemia.
+
+	di/dt= Beta*s*i - gamma*i
+	     = (Beta*s-gamma)*i
+
+	La ecuación anterior representa el crecimiento de la población de infectados con respecto al tiempo, es necesario
+	evaluar el comportamiento de esta ecuación para determinar bajo qué condiciones se puede generar una epidemia, para esto 
+	se tomarán dos casos donde el sistema se encuentra en su estado inicial y posteriormente se generalizarán los resultados de
+	manera tal que sean válidos para cualquier instante de tiempo t.
+
+	Caso 1:  di(0)/dt= (Beta*s(0)-gamma)*i(0) <= 0
+	En este caso el incremento de los infectados para la población es negativo o nulo, haciendo uso de
+	las condiciones del modelo de SIR se sabe que i(0),s(0)>0, con lo cual (Beta*s(0)-gamma)<=0, es decir Beta*s(0)<=gamma, de esta 
+	forma se tiene la condición necesaria para que la enfermedad no se propague cuando el sistema se encuentra en su estado inicial,
+	sin embargo teniendo en cuenta las hipótesis del modelo de SIR sin muertes ni nacimientos, la cantidad de individuos susceptibles
+	tiende a disminuir con el tiempo, así s(0)>s(t), por lo tanto Beta*s(t)<Beta*s(0)<gamma, concluyendo que para cualquier instante
+	de tiempo t la enfermedad no se propagará y de este modo no se obtendrá una epidemia.
+	
+	Caso 2: di(0)/dt= (Beta*s(0)-gamma)*i(0) > 0
+	En este caso se tiene un incremento di/dt en el número de individuos infectados, para que esta condición sea posible y de
+	forma análoga al caso 1 se sabe que i(0),s(0)>0 , de modo que (Beta*s(0)-gamma)>0 lo cual equivale a
+	Beta*s(0)>gamma, obteniendo así la condición necesaria para que la enfermedad se propague, sin embargo el comportamiento de la
+	población susceptible en el modelo de SIR dicta que s(0)>s(t), esto implica que el número de infectados crecerá en tanto Beta*s(t)>gamma,
+        además llegará a un máximo y empezará a disminuir cuando s(t) sea lo suficientemente pequeño tal que Beta*s(t)<gamma. 
+  	De esta manera se concluye que para generar una epidemia se debe cumplir que (Beta*s(0)-gamma)>0, no obstante la epidemia 
+	desaparecerá despues de cierto período de tiempo.
+ 
+
+
+
+	
+
+	
