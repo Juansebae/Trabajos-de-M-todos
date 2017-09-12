@@ -139,7 +139,8 @@ int main(void){
   
   int i,j;
   double t, dt=1e-3;
-  int Ndibujos,tdibujo;
+  double tdibujo;
+  int Ndibujos;
   Cuerpo Grano[N+4];
   Colisionador Newton;
   Crandom ran64(1); double theta;
@@ -174,10 +175,12 @@ int main(void){
   
   //Iniciar Granos
   //            (x0, y0, z0, Vx0, Vy0, Vz0, m0, R0)
-  for(i=0;i<Nx;i++)
-    for(j=0;j<Ny;j++)
-      theta=2*M_PI*ran64();
-      Grano[i+Nx*j].Inicie((i+1)*dx, (j+1)*dy, 0, V*cps(theta),V*sin(theta), 0, m0, R0);
+  for(i=0;i<Nx;i++){
+    for(j=0;j<Ny;j++){
+      theta=2*M_PI*ran64.r();
+      Grano[i+Nx*j].Inicie((i+1)*dx, (j+1)*dy, 0, V*cos(theta),V*sin(theta), 0, m0, R0);
+    }
+  }
  
 
   for (t=tdibujo=0;t<tmax;t+=dt,tdibujo+=dt){
