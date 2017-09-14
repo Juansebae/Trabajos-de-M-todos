@@ -4,11 +4,16 @@
 #include "Vector.h"
 #include "Random64.h"
 
+
+// Tesis de rodadura, profesor William Duke??, Repositorio UNAL
+
 using namespace std;
 
 const double K=1e4;
 const double Gamma=50;
 const double g=9.8;
+const double Kcundall=10;
+const double MU=0.4;
 const double Lx=100,Ly=100;
 const int Nx=1,Ny=1,N=Nx*Ny;
 
@@ -23,13 +28,17 @@ class Colisionador;
 //Clase Cuerpo
 class Cuerpo{
 private:
-  vector3D r,V,F;
-  double m,R;
+  vector3D r,V,F,omega,tau;
+  double m,R,theta,I;
   
 public:
-  void Inicie(double x0, double y0, double z0, double Vx0, double Vy0, double Vz0, double m0, double R0);
-  void BorreFuerza(void);
+  void Inicie(double x0, double y0, double z0, double Vx0, double Vy0, double Vz0,
+	      double theta0,
+	      double omega0,
+	      double m0, double R0);
+  void BorreFuerzayTorque(void);
   void AgregueFuerza(vector3D F0);
+  void AgregueTorque(vector3D tau0);
   void Mueva_r(double dt, double Constante);
   void Mueva_V(double dt, double Constante);
   double Getx(void){return r.x();};
@@ -43,22 +52,32 @@ public:
 //Clase Colisionador
 class Colisionador{
 private:
+  vector3D ele[N+4][N+4];
+  bool EstoyEnColision[N+4][N+4];
 
 public:
-  void CalculeTodasLasFuerzas(Cuerpo* Grano);
-  void CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2);
+  void Inicie(void);
+  void CalculeTodasLasFuerzas(Cuerpo* Grano, double dt);
+  void CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2,vector3D & ele, bool & EstoyEnColision, double dt);
 };
   
 //Funciones de la clase cuerpo
-void Cuerpo::Inicie(double x0, double y0, double z0, double Vx0, double Vy0, double Vz0, double m0, double R0){
+void Cuerpo::Inicie(double x0, double y0, double z0, double Vx0, double Vy0, double Vz0,
+		    double theta0,
+		    double omega0,
+		    double m0, double R0){
   r.cargue(x0,y0,z0);
   V.cargue(Vx0,Vy0,Vz0);
+  omega.cargue(0,0,omega0);
+  theta=theta0;
   m=m0; R=R0;
+  I=(2.0/5)*m*R*R;
 }
 
 
-void Cuerpo::BorreFuerza(void){
+void Cuerpo::BorreFuerzayTorque(void){
   F.cargue(0,0,0);
+  tau.cargue(0,0,0);
 }
 
 
@@ -67,26 +86,41 @@ void Cuerpo::AgregueFuerza(vector3D F0){
 }
 
 
+void Cuerpo::AgregueTorque(vector3D tau0){
+  tau+=tau0;
+}
+
+
 void Cuerpo::Mueva_r(double dt, double Constante){
-  r+=V*(Constante*dt);
+  r+=V*(Constante*dt); theta+=omega.z()*Constante*dt;
 }
 
 
 void Cuerpo::Mueva_V(double dt, double Constante){
-  V+=F*(Constante*dt)/m;
+  V+=F*(Constante*dt)/m; omega+=tau*(Constante*dt/I);
 }
 
 
 void Cuerpo::Dibujese(void){
-  cout<<", "<<r.x()<<"+"<<R<<"*cos(t),"<<r.y()<<"+"<<R<<"*sin(t)";
+  cout<<", "<<r.x()<<"+"<<R<<"*cos(t),"<<r.y()<<"+"<<R<<"*sin(t) , "
+      <<r.x()<<"+"<<R*cos(theta)/7.0<<"*t,"<<r.y()<<"+"<<R*sin(theta)/7.0<<"*t";
+}
+// Funciones de la clase colisionador
+
+void Colisionador::Inicie(void){
+  int i,j;
+  for(i=0;i<N;i++){
+    for(j=i+1;j<N+4;j++){
+      ele[i][j].cargue(0,0,0); EstoyEnColision[i][j]=false;
+    }
+  }
 }
 
-
-void Colisionador::CalculeTodasLasFuerzas(Cuerpo* Grano){
+void Colisionador::CalculeTodasLasFuerzas(Cuerpo* Grano, double dt){
   int i,j;
   vector3D g_vector; g_vector.cargue(0,-g,0);
   for(i=0;i<N;i++){
-    Grano[i].BorreFuerza();
+    Grano[i].BorreFuerzayTorque();
   }
   // Agregue la fuerza de la gravedad
   for(i=0;i<N;i++){
@@ -96,17 +130,17 @@ void Colisionador::CalculeTodasLasFuerzas(Cuerpo* Grano){
   //Calcular todas las fuerzas entre parejas de planetas
   for(i=0;i<N;i++){
     for(j=i+1;j<N+4;j++){
-      CalculeLaFuerzaEntre(Grano[i], Grano[j]);
+      CalculeLaFuerzaEntre(Grano[i], Grano[j], ele[i][j], EstoyEnColision[i][j], dt);
     }
   }
 }
 
 
-void Colisionador::CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2){
-  vector3D r21,n,Vc,Vcn,Vct,t,Fn,F2;            // vector t es el unitario de Vct
+void Colisionador::CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2,vector3D & ele, bool & EstoyEnColision, double dt){
+  vector3D r21,n,Vc,Vcn,Vct,t,Fn,Ft,F2;            // vector t es el unitario de Vct
   double d21,s;
   double m1,m2,m12,R1,R2;
-  double componenteVcn,componenteFn,normaVct;
+  double componenteVcn,componenteFn,normaVct,normaFt,Ftmax;
   double ERFF=1e-8;
   r21= Grano2.r-Grano1.r;
   d21=norma(r21);
@@ -124,7 +158,7 @@ void Colisionador::CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2){
     n=r21/d21;
 
     // Calcular velocidad de contacto y vector tangente.
-    Vc=(Grano2.V-Grano1.V);
+    Vc=(Grano2.V-Grano1.V)-(Grano2.omega^n)*R2-(Grano1.omega^n)*R1;
     componenteVcn=Vc*n;
     Vcn=n*componenteVcn;
     Vct=Vc-Vcn;
@@ -138,17 +172,34 @@ void Colisionador::CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2){
     componenteFn-=m12*sqrt(s)*Gamma*componenteVcn; if(componenteFn<0) componenteFn=0;
     Fn=n*componenteFn;
 
+    //Fuerzas Tangenciales
+    ele+=(Vct*dt);
+    Ft=ele*(-Kcundall);
+    //Fuerza Cinética
+    Ftmax=MU*componenteFn;
+    normaFt=norma(Ft);
+    if(normaFt>Ftmax){Ft=ele*(-Ftmax/norma(ele));}
+       F2=Fn+Ft;
+       Grano1.AgregueFuerza(F2*(-1));
+       Grano2.AgregueFuerza(F2);
+       EstoyEnColision=true;
+       Grano1.AgregueTorque((n*(-R2))^Ft);
+       Grano2.AgregueTorque((n*R1)^(Ft*(-1)));
+     
 
-    F2=Fn;
-    Grano1.AgregueFuerza(F2*(-1)); Grano2.AgregueFuerza(F2);
+
+   
+ 
   }
 
+  
+  else if(EstoyEnColision==true){ele.cargue(0,0,0); EstoyEnColision=false;}
 }
 
 
 void InicieAnimacion(void){
   cout<<"set terminal gif animate"<<endl;
-  cout<<"set output 'GranosParado.gif'"<<endl;
+  cout<<"set output 'GranosParadoyGira.gif'"<<endl;
   cout<<"unset key"<<endl;
   cout<<"set xrange [-10:110]"<<endl;
   cout<<"set yrange [-10:110]"<<endl;
@@ -182,8 +233,9 @@ int main(void){
   Crandom ran64(1); double theta;
 
   
-  double m0=1,R0=3,V=10;
+  double m0=1,R0=6,V=10;
   double Rpared=10000,Mpared=1000;
+  double  omega0=10;
 
 
   double T=Lx/V, tmax=5*T;
@@ -196,25 +248,25 @@ int main(void){
 
 
   // Iniciar las Paredes 
-  //            (x0, y0, z0, Vx0, Vy0, Vz0, m0, R0)
+  //            (x0, y0, z0, Vx0, Vy0, Vz0,theta0,omega0, m0, R0)
 
   //Pared arriba
-  Grano[N  ].Inicie(Lx/2,Ly+Rpared , 0, 0, 0, 0,Mpared, Rpared);
+  Grano[N  ].Inicie(Lx/2,Ly+Rpared , 0, 0, 0, 0, 0, 0,Mpared, Rpared);
   //Pared abajo
-  Grano[N+1].Inicie(Lx/2,-Rpared   , 0, 0, 0, 0,Mpared, Rpared);
+  Grano[N+1].Inicie(Lx/2,-Rpared   , 0, 0, 0, 0, 0, 0,Mpared, Rpared);
   //Pared derecha
-  Grano[N+2].Inicie(Lx+Rpared,Ly/2 , 0, 0, 0, 0,Mpared, Rpared);
+  Grano[N+2].Inicie(Lx+Rpared,Ly/2 , 0, 0, 0, 0, 0, 0,Mpared, Rpared);
   //Pared izquierda
-  Grano[N+3].Inicie(-Rpared,Ly/2   , 0, 0, 0, 0,Mpared, Rpared);
+  Grano[N+3].Inicie(-Rpared,Ly/2   , 0, 0, 0, 0, 0, 0,Mpared, Rpared);
 
 
   
   //Iniciar Granos
-  //            (x0, y0, z0, Vx0, Vy0, Vz0, m0, R0)
+  //            (x0, y0, z0, Vx0, Vy0, Vz0,theta0,omega0, m0, R0)
   for(i=0;i<Nx;i++){
     for(j=0;j<Ny;j++){
       theta=2*M_PI*ran64.r();
-      Grano[i+Nx*j].Inicie((i+1)*dx, (j+1)*dy, 0, 10,0, 0, m0, R0);
+      Grano[i+Nx*j].Inicie((i+1)*dx, (j+1)*dy, 0, 0,0, 0, 0, omega0, m0, R0);
     }
   }
  
@@ -233,7 +285,7 @@ int main(void){
     for(i=0;i<N;i++){
       Grano[i].Mueva_r(dt, Zeta);
     }
-    Newton.CalculeTodasLasFuerzas(Grano);
+    Newton.CalculeTodasLasFuerzas(Grano, dt);
     
     for(i=0;i<N;i++){
       Grano[i].Mueva_V(dt, (1-2*Lambda)/2);
@@ -242,7 +294,7 @@ int main(void){
       Grano[i].Mueva_r(dt, Xi);
     }
    
-    Newton.CalculeTodasLasFuerzas(Grano);
+    Newton.CalculeTodasLasFuerzas(Grano, dt);
     
     for(i=0;i<N;i++){
       Grano[i].Mueva_V(dt, Lambda);
@@ -250,7 +302,7 @@ int main(void){
     for(i=0;i<N;i++){
       Grano[i].Mueva_r(dt, 1-2*(Xi+Zeta)); 
     }
-    Newton.CalculeTodasLasFuerzas(Grano);
+    Newton.CalculeTodasLasFuerzas(Grano, dt);
     
     for(i=0;i<N;i++){
       Grano[i].Mueva_V(dt, Lambda);
@@ -259,7 +311,7 @@ int main(void){
       Grano[i].Mueva_r(dt, Xi);
     }
     
-    Newton.CalculeTodasLasFuerzas(Grano);
+    Newton.CalculeTodasLasFuerzas(Grano, dt);
     
     for(i=0;i<N;i++){
       Grano[i].Mueva_V(dt, (1-2*Lambda)/2);
