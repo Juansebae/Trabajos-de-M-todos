@@ -112,7 +112,7 @@ void Colisionador::CalculeLaFuerzaEntre(Cuerpo & Grano1, Cuerpo & Grano2){
 
 void InicieAnimacion(void){
   cout<<"set terminal gif animate"<<endl;
-  cout<<"set output 'Granos.gif'"<<endl;
+  cout<<"set output 'GranosV2.gif'"<<endl;
   cout<<"unset key"<<endl;
   cout<<"set xrange [-10:110]"<<endl;
   cout<<"set yrange [-10:110]"<<endl;
@@ -124,10 +124,10 @@ void InicieAnimacion(void){
 
 void InicieCuadro(void){
   cout<<"plot 0,0 ";
-  cout<<" , "<<100/7<<"*t,0";
-  cout<<" , "<<100/7<<"*t,100";
-  cout<<" , 0,"<<100/7<<"*t";
-  cout<<" , 100,"<<100/7<<"*t";
+  cout<<" , "<<100.1/7<<"*t,0";
+  cout<<" , "<<100.1/7<<"*t,100";
+  cout<<" , 0,"<<100.1/7<<"*t";
+  cout<<" , 100,"<<100.1/7<<"*t";
 }
 void TermineCuadro(void){
   cout<<endl;
@@ -138,7 +138,7 @@ void TermineCuadro(void){
 int main(void){
   
   int i,j;
-  double t, dt=1e-3;
+  double t, dt=1e-4;
   double tdibujo;
   int Ndibujos;
   Cuerpo Grano[N+4];
@@ -146,7 +146,7 @@ int main(void){
   Crandom ran64(1); double theta;
 
   
-  double m0=1,R0=3,V=10;
+  double m0=1,R0=3,V=100;
   double Rpared=10000,Mpared=1000;
 
 
